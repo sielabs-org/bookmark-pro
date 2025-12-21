@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmark Pro Popup</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            width: 450px;
+            min-height: 300px;
+            padding: 24px;
+            box-sizing: border-box;
+            background-color: var(--color-bg);
+            font-family: var(--font-family);
+            /* Ensure font is inherited if global css fails/overridden */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .link-dashboard {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--color-text-light);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .link-dashboard:hover {
+            background-color: #EBECF0;
+            color: var(--color-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2>Add Bookmark</h2>
+    </div>
+    <form id="popup-form">
+        <div class="input-group">
+            <input type="text" id="bm-title" placeholder="Title" required>
+        </div>
+        <div class="input-group">
+            <input type="url" id="bm-url" placeholder="URL" required>
+        </div>
+        <div class="input-group">
+            <select id="bm-cat" required>
+                <option value="">Select Category</option>
+                <option value="new">+ New Category</option>
+            </select>
+        </div>
+        <div class="input-group" id="new-cat-group" style="display: none;">
+            <input type="text" id="new-cat-name" placeholder="New Category Name">
+        </div>
+        <button type="submit" class="btn btn-full">Save Bookmark</button>
+    </form>
+
+    <a href="#" id="open-dashboard" class="link-dashboard">Open Dashboard</a>
+
+    <script type="module" src="scripts/popup.js"></script>
+</body>
+
+</html>

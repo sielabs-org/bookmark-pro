@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmark Pro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <h2>Categories</h2>
+            <ul class="category-list" id="category-list">
+                <!-- Categories injected here -->
+            </ul>
+            <button class="btn" id="add-category-btn" style="margin-top:auto; width:100%;">+ New Category</button>
+        </aside>
+        
+        <main class="main-content">
+            <header class="header">
+                <h1 id="page-title">All Bookmarks</h1>
+                <button class="btn" id="add-bookmark-btn">+ Add Bookmark</button>
+            </header>
+            
+            <div class="bookmark-grid" id="bookmark-grid">
+                <!-- Bookmarks injected here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">New Item</h2>
+            <form id="modal-form">
+                <!-- Form fields injected here -->
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/dashboard.js"></script>
+</body>
+</html>
