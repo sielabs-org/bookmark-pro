@@ -24,6 +24,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === modalEl) closeModal();
     });
 
+    function getBookmarkImage(url) {
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname;
+
+            if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+                let videoId = null;
+                if (hostname.includes('youtu.be')) {
+                    videoId = urlObj.pathname.slice(1);
+                } else {
+                    videoId = urlObj.searchParams.get('v');
+                }
+
+                if (videoId) {
+                    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+            }
+
+            return `https://www.google.com/s2/favicons?sz=64&domain_url=${url}`;
+        } catch (e) {
+            return 'https://via.placeholder.com/150';
+        }
+    }
+
     async function renderCategories() {
         const categories = await getCategories();
         categoryListEl.innerHTML = `
@@ -76,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             a.href = bm.url;
             a.target = '_blank';
             a.innerHTML = `
+                <img src="${getBookmarkImage(bm.url)}" alt="${bm.title}" class="bookmark-image" onerror="this.src='https://via.placeholder.com/150'">
                 <div class="bookmark-title">${bm.title}</div>
                 <div class="bookmark-url">${new URL(bm.url).hostname}</div>
             `;
