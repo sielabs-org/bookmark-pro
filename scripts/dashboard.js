@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookmarkGridEl = document.getElementById('bookmark-grid');
     const pageTitleEl = document.getElementById('page-title');
     const addBookmarkBtn = document.getElementById('add-bookmark-btn');
+    const shareBtn = document.getElementById('share-btn');
     const addCategoryBtn = document.getElementById('add-category-btn');
     const modalEl = document.getElementById('modal');
     const modalTitleEl = document.getElementById('modal-title');
@@ -18,6 +19,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Event Listeners
     addCategoryBtn.addEventListener('click', () => openModal('category'));
     addBookmarkBtn.addEventListener('click', () => openModal('bookmark'));
+
+    shareBtn.addEventListener('click', () => {
+        const shareUrl = "https://chrome.google.com/webstore/detail/bookmark-pro/placeholder-id";
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert("Share link copied to clipboard!");
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert("Failed to copy link.");
+        });
+    });
 
     // Close modal when clicking outside
     modalEl.addEventListener('click', (e) => {
@@ -105,15 +116,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="bookmark-url">${new URL(bm.url).hostname}</div>
             `;
             // Right click to delete? Or add a delete button. Let's add a small delete button for now.
+            const actionsDiv = document.createElement('div');
+            actionsDiv.style.cssText = "align-self: flex-end; display: flex; gap: 5px; margin-top: auto;";
+
+            const copyBtn = document.createElement('button');
+            copyBtn.innerText = 'Copy';
+            copyBtn.className = 'btn';
+            copyBtn.title = 'Copy Link';
+            copyBtn.style.cssText = "font-size: 12px; padding: 4px 8px; background-color: var(--color-primary);";
+            copyBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigator.clipboard.writeText(bm.url).then(() => {
+                    const originalText = copyBtn.innerText;
+                    copyBtn.innerText = 'Copied';
+                    setTimeout(() => {
+                        copyBtn.innerText = originalText;
+                    }, 2000);
+                });
+            };
+
             const delBtn = document.createElement('button');
             delBtn.innerText = 'x';
-            delBtn.style.cssText = "align-self: flex-end; background: none; border: none; color: #999; cursor: pointer;";
+            delBtn.title = 'Delete';
+            delBtn.style.cssText = "background: none; border: none; color: #999; cursor: pointer; font-size: 16px; align-self: center;";
             delBtn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 deleteBookmark(bm.id).then(() => renderBookmarks(currentCategoryId));
             };
-            a.prepend(delBtn);
+
+            actionsDiv.appendChild(copyBtn);
+            actionsDiv.appendChild(delBtn);
+            a.appendChild(actionsDiv);
 
             bookmarkGridEl.appendChild(a);
         });
