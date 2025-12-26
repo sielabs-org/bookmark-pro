@@ -25,13 +25,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             catSelect.remove(2);
         }
 
-        const categories = await getCategories();
+        let categories = await getCategories();
+
+        // Ensure "Default" category exists
+        let defaultCategory = categories.find(c => c.name === 'Default');
+        if (!defaultCategory) {
+            defaultCategory = await addCategory({ name: 'Default' });
+            categories = await getCategories();
+        }
+
         categories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat.id;
             option.textContent = cat.name;
             catSelect.appendChild(option);
         });
+
+        // Select "Default" category
+        if (defaultCategory) {
+            catSelect.value = defaultCategory.id;
+        }
     }
     await loadCategories();
 
