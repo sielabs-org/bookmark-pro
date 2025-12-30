@@ -11,14 +11,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalTitleEl = document.getElementById('modal-title');
     const modalFormEl = document.getElementById('modal-form');
     let currentCategoryId = 'all';
+    let currentSearchQuery = '';
 
     // Initial Load
     await renderCategories();
     await renderBookmarks('all');
 
+    const searchInput = document.getElementById('search-input');
+
     // Event Listeners
     addCategoryBtn.addEventListener('click', () => openModal('category'));
     addBookmarkBtn.addEventListener('click', () => openModal('bookmark'));
+
+    searchInput.addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value.toLowerCase();
+        renderBookmarks(currentCategoryId);
+    });
 
     shareBtn.addEventListener('click', () => {
         const shareUrl = "https://chrome.google.com/webstore/detail/bookmark-pro/placeholder-id";
@@ -102,6 +110,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         let bookmarks = await getBookmarks();
         if (categoryId !== 'all') {
             bookmarks = bookmarks.filter(b => b.categoryId === categoryId);
+        }
+
+        if (currentSearchQuery) {
+            bookmarks = bookmarks.filter(b =>
+                b.title.toLowerCase().includes(currentSearchQuery) ||
+                b.url.toLowerCase().includes(currentSearchQuery)
+            );
         }
 
         bookmarkGridEl.innerHTML = '';

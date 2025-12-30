@@ -184,3 +184,21 @@ body {
     border-radius: 4px;
     width: 400px;
 }
+
+/* Search Input */
+.search-input {
+    width: 100%;
+    padding: 8px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    background-color: #F4F5F7;
+    font-size: 14px;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.search-input:focus {
+    background-color: white;
+    box-shadow: 0 0 0 2px var(--color-primary);
+    border-color: transparent;
+}
