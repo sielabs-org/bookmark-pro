@@ -106,6 +106,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function getGradient(str) {
+        const gradients = [
+            'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%)', // Pinky
+            'linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%)', // Aqua
+            'linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)', // Lavender
+            'linear-gradient(120deg, #f093fb 0%, #f5576c 100%)', // Rose
+            'linear-gradient(120deg, #f6d365 0%, #fda085 100%)', // Sunset
+            'linear-gradient(120deg, #d299c2 0%, #fef9d7 100%)', // Magic
+            'linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%)', // Blue
+            'linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%)', // Cloud
+        ];
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % gradients.length;
+        return gradients[index];
+    }
+
     async function renderBookmarks(categoryId) {
         let bookmarks = await getBookmarks();
         if (categoryId !== 'all') {
@@ -121,49 +140,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         bookmarkGridEl.innerHTML = '';
         bookmarks.forEach(bm => {
+            const imgUrl = getBookmarkImage(bm.url);
+            const isFavicon = imgUrl.includes('google.com/s2/favicons');
+            const bgStyle = isFavicon ? `background: ${getGradient(bm.title)};` : 'background: #F4F5F7;';
+
             const a = document.createElement('a');
             a.className = 'bookmark-card';
             a.href = bm.url;
             a.target = '_blank';
-            a.innerHTML = `
-                <img src="${getBookmarkImage(bm.url)}" alt="${bm.title}" class="bookmark-image" onerror="this.src='https://via.placeholder.com/150'">
-                <div class="bookmark-title">${bm.title}</div>
-                <div class="bookmark-url">${new URL(bm.url).hostname}</div>
-            `;
-            // Right click to delete? Or add a delete button. Let's add a small delete button for now.
-            const actionsDiv = document.createElement('div');
-            actionsDiv.style.cssText = "align-self: flex-end; display: flex; gap: 5px; margin-top: auto;";
 
+            a.innerHTML = `
+                <div class="bookmark-visual" style="${bgStyle}">
+                    <img src="${imgUrl}" alt="${bm.title}" class="${isFavicon ? 'is-favicon' : ''}" onerror="this.src='https://via.placeholder.com/150'">
+                </div>
+                <div class="bookmark-info">
+                    <div class="bookmark-title">${bm.title}</div>
+                    <div class="bookmark-meta">
+                        <span class="bookmark-hostname">${new URL(bm.url).hostname}</span>
+                    </div>
+                </div>
+            `;
+
+            const footer = document.createElement('div');
+            footer.className = 'bookmark-footer';
+
+            // Copy Button
             const copyBtn = document.createElement('button');
-            copyBtn.innerText = 'Copy';
-            copyBtn.className = 'btn';
+            copyBtn.className = 'action-btn copy-btn';
             copyBtn.title = 'Copy Link';
-            copyBtn.style.cssText = "font-size: 12px; padding: 4px 8px; background-color: var(--color-primary);";
+            copyBtn.innerHTML = `
+                <svg viewBox="0 0 24 24">
+                    <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/>
+                </svg>
+            `;
             copyBtn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 navigator.clipboard.writeText(bm.url).then(() => {
-                    const originalText = copyBtn.innerText;
-                    copyBtn.innerText = 'Copied';
-                    setTimeout(() => {
-                        copyBtn.innerText = originalText;
-                    }, 2000);
+                    const originalHtml = copyBtn.innerHTML;
+                    copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+                    setTimeout(() => copyBtn.innerHTML = originalHtml, 2000);
                 });
             };
 
+            // Delete Button
             const delBtn = document.createElement('button');
-            delBtn.innerText = 'x';
+            delBtn.className = 'action-btn delete-btn';
             delBtn.title = 'Delete';
-            delBtn.style.cssText = "background: none; border: none; color: #999; cursor: pointer; font-size: 16px; align-self: center;";
+            delBtn.innerHTML = `
+                <svg viewBox="0 0 24 24">
+                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+            `;
             delBtn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                deleteBookmark(bm.id).then(() => renderBookmarks(currentCategoryId));
+                if (confirm('Are you sure you want to delete this bookmark?')) {
+                    deleteBookmark(bm.id).then(() => renderBookmarks(currentCategoryId));
+                }
             };
 
-            actionsDiv.appendChild(copyBtn);
-            actionsDiv.appendChild(delBtn);
-            a.appendChild(actionsDiv);
+            footer.appendChild(copyBtn);
+            footer.appendChild(delBtn);
+            a.appendChild(footer);
 
             bookmarkGridEl.appendChild(a);
         });
