@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             a.innerHTML = `
                 <div class="bookmark-visual" style="${bgStyle}">
-                    <img src="${imgUrl}" alt="${bm.title}" class="${isFavicon ? 'is-favicon' : ''}" onerror="this.src='https://via.placeholder.com/150'">
+                    <img src="${imgUrl}" alt="${bm.title}" class="${isFavicon ? 'is-favicon' : ''}">
                 </div>
                 <div class="bookmark-info">
                     <div class="bookmark-title">${bm.title}</div>
@@ -160,6 +160,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
+
+            // Handle image error for CSP compliance
+            const img = a.querySelector('img');
+            img.addEventListener('error', () => {
+                img.src = 'https://via.placeholder.com/150';
+            });
 
             const footer = document.createElement('div');
             footer.className = 'bookmark-footer';
