@@ -69,11 +69,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderCategories() {
         const categories = await getCategories();
-        categoryListEl.innerHTML = `
-            <li class="category-item ${currentCategoryId === 'all' ? 'active' : ''}" data-id="all">
-                All Bookmarks
-            </li>
-        `;
+        categoryListEl.innerHTML = '';
+
+        // "All Bookmarks" Item
+        const allLi = document.createElement('li');
+        allLi.className = `category-item ${currentCategoryId === 'all' ? 'active' : ''}`;
+        allLi.dataset.id = 'all';
+        allLi.textContent = 'All Bookmarks';
+
+        allLi.addEventListener('click', () => {
+            currentCategoryId = 'all';
+            document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+            allLi.classList.add('active');
+            pageTitleEl.textContent = 'All Bookmarks';
+            renderBookmarks('all');
+        });
+
+        categoryListEl.appendChild(allLi);
+
         categories.forEach(cat => {
             const li = document.createElement('li');
             li.className = `category-item ${currentCategoryId === cat.id ? 'active' : ''}`;
