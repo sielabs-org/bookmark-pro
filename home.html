@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmark Pro - Privacy & Home</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            display: block;
+            /* Override flex from styles.css if needed, though styles.css seems to set flex on body. Resetting to default for a scrollable page */
+            height: auto;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        /* Reset body display for this page specifically to avoid layout issues */
+        body.home-page {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            background-color: var(--color-bg);
+        }
+
+        .container {
+            max-width: 98%;
+            width: 100%;
+            margin: 0 auto;
+            padding: 10px 20px;
+            height: 100vh;
+            /* assist in fitting */
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--color-primary);
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--color-text-light);
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 15px;
+            align-items: stretch;
+            flex: 1;
+            overflow: hidden;
+            /* Hide overflow if strictly single screen, but auto is safer */
+            min-height: 0;
+            /* for flex child scrolling */
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+                overflow-y: auto;
+            }
+
+            .container {
+                height: auto;
+                display: block;
+            }
+        }
+
+        section {
+            margin-bottom: 0;
+            /* Remove bottom margin as grid gap handles spacing */
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--color-border);
+            height: auto;
+            overflow-y: auto;
+            /* Allow internal scrolling if absolutely necessary */
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            color: var(--color-text);
+            margin-top: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        h3 {
+            font-size: 0.95rem;
+            margin: 8px 0 4px 0;
+            color: var(--color-text);
+        }
+
+        p,
+        li {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin-bottom: 5px;
+        }
+
+        ul {
+            margin-top: 0;
+            margin-bottom: 5px;
+            padding-left: 15px;
+        }
+
+        .privacy-badge {
+            background-color: var(--color-secondary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 10px;
+            align-self: flex-start;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            /* Single column inside the smaller card */
+            gap: 10px;
+            margin-top: 0;
+            overflow-y: auto;
+        }
+
+        .feature-item {
+            padding: 10px;
+            background: var(--color-bg-sidebar);
+            border-radius: 8px;
+            text-align: left;
+            /* Better for vertical stacking */
+            display: flex;
+            /* keep icon/text alignment if needed later, or just block */
+            flex-direction: column;
+        }
+
+        .feature-item h3 {
+            margin-top: 0;
+            margin-bottom: 2px;
+        }
+
+        .feature-item p {
+            margin: 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: var(--color-primary);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+            background-color: #0065FF;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--color-text-light);
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .icon-shield {
+            width: 24px;
+            height: 24px;
+            fill: var(--color-secondary);
+        }
+    </style>
+</head>
+
+<body class="home-page">
+    <div class="container">
+        <header>
+            <img src="assets/icon.png" alt="Bookmark Pro Logo" width="64" height="64" style="margin-bottom: 10px;">
+            <h1>Bookmark Pro</h1>
+            <p class="subtitle">Organize your web life, simply and securely.</p>
+            <a href="index.html" class="cta-button">Open Dashboard</a>
+        </header>
+
+        <div class="content-grid">
+            <section id="privacy">
+                <span class="privacy-badge">Privacy First</span>
+                <h2>Privacy Policy</h2>
+                <p>Bookmark Pro is designed with a "local-only" philosophy. Your data belongs to you and stays on your
+                    machine.</p>
+
+                <h3>1. Data Collection</h3>
+                <p>We do not collect any personally identifiable information. The extension handles the following data
+                    strictly to function:</p>
+                <ul style="color: var(--color-text-light); padding-left: 20px;">
+                    <li><strong>Website Content:</strong> When you save a bookmark, we store the URL and page title.
+                    </li>
+                    <li><strong>Web History:</strong> We access the active tab's metadata only when you click the
+                        extension
+                        icon to help you save links faster.</li>
+                </ul>
+
+                <h3>2. Data Storage</h3>
+                <p>All bookmarks and categories are stored locally in your browser's <code>chrome.storage.local</code>.
+                    No
+                    data is ever transmitted to a remote server or third party.</p>
+
+                <h3>3. Data Control</h3>
+                <p>You have full control over your data. You can delete individual bookmarks or categories at any time.
+                    Uninstalling the extension automatically wipes all locally stored data.</p>
+
+                <h3>4. Security</h3>
+                <p>Since data is stored locally, your information is as secure as your personal device.</p>
+            </section>
+
+            <section id="features">
+                <h2>Why Bookmark Pro?</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <h3>Fast</h3>
+                        <p>Lightweight and optimized for speed.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Organized</h3>
+                        <p>Custom categories to keep your links tidy.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Beautiful</h3>
+                        <p>A modern, clean interface that's easy on the eyes.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 Sielabs. Built with ❤️ for the web.</p>
+        </footer>
+    </div>
+
+    <!-- Theme Toggle Script to match system or saved preference -->
+    <script>
+        // Simple theme initialization based on local storage or system preference
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</body>
+
+</html>
