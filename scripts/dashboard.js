@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookmarkGridEl = document.getElementById('bookmark-grid');
     const pageTitleEl = document.getElementById('page-title');
     const addBookmarkBtn = document.getElementById('add-bookmark-btn');
-    const shareBtn = document.getElementById('share-btn');
     const addCategoryBtn = document.getElementById('add-category-btn');
     const modalEl = document.getElementById('modal');
     const modalTitleEl = document.getElementById('modal-title');
@@ -51,16 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchInput.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value.toLowerCase();
         renderBookmarks(currentCategoryId);
-    });
-
-    shareBtn.addEventListener('click', () => {
-        const shareUrl = "https://chrome.google.com/webstore/detail/bookmark-pro/placeholder-id";
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            alert("Share link copied to clipboard!");
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-            alert("Failed to copy link.");
-        });
     });
 
     // Close modal when clicking outside
