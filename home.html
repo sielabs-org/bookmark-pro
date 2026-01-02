@@ -29,7 +29,7 @@
             width: 100%;
             margin: 0 auto;
             padding: 10px 20px;
-            height: 100vh;
+            min-height: 100vh;
             /* assist in fitting */
             display: flex;
             flex-direction: column;
@@ -37,8 +37,8 @@
 
         header {
             text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--color-border);
             flex-shrink: 0;
         }
@@ -46,26 +46,25 @@
         h1 {
             font-size: 1.8rem;
             color: var(--color-primary);
-            margin-bottom: 0;
+            margin-bottom: 5px;
             margin-top: 0;
         }
 
         .subtitle {
             font-size: 1rem;
             color: var(--color-text-light);
-            margin-top: 5px;
-            margin-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 10px;
         }
 
         .content-grid {
             display: grid;
             grid-template-columns: 1.5fr 1fr;
-            gap: 15px;
-            align-items: stretch;
+            gap: 20px;
+            align-items: start;
             flex: 1;
-            overflow: hidden;
             /* Hide overflow if strictly single screen, but auto is safer */
-            min-height: 0;
+            /* min-height: 0; */
             /* for flex child scrolling */
         }
 
@@ -168,25 +167,7 @@
             margin: 0;
         }
 
-        .cta-button {
-            display: inline-block;
-            background-color: var(--color-primary);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-        }
 
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
-            background-color: #0065FF;
-        }
 
         footer {
             text-align: center;
@@ -211,7 +192,7 @@
             <img src="assets/icon.png" alt="Bookmark Pro Logo" width="64" height="64" style="margin-bottom: 10px;">
             <h1>Bookmark Pro</h1>
             <p class="subtitle">Organize your web life, simply and securely.</p>
-            <a href="index.html" class="cta-button">Open Dashboard</a>
+
         </header>
 
         <div class="content-grid">
