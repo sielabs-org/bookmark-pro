@@ -1,4 +1,4 @@
-import { getCategories, addCategory, getBookmarks, addBookmark, deleteBookmark, deleteCategory } from './storage.js';
+import { getCategories, addCategory, getBookmarks, addBookmark, deleteBookmark, deleteCategory, moveBookmark, updateBookmark } from './storage.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const categoryListEl = document.getElementById('category-list');
@@ -99,6 +99,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderBookmarks('all');
         });
 
+        // Allow dropping on "All" (optional, maybe not needed if it just means no change?) 
+        // But real categories need drop zones.
+
         categoryListEl.appendChild(allLi);
 
         categories.forEach(cat => {
@@ -106,6 +109,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             li.className = `category-item ${currentCategoryId === cat.id ? 'active' : ''}`;
             li.dataset.id = cat.id;
             li.innerHTML = `<span>${cat.name}</span> <span class="delete-cat" style="margin-left:auto; font-size:12px; color:red; display:none;">x</span>`;
+
+            // Drop Zone Logic
+            li.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Necessary for drop to work
+                li.classList.add('drag-over');
+            });
+            li.addEventListener('dragleave', () => {
+                li.classList.remove('drag-over');
+            });
+            li.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                li.classList.remove('drag-over');
+                const bookmarkId = e.dataTransfer.getData('text/plain');
+                if (bookmarkId) {
+                    await moveBookmark(bookmarkId, cat.id);
+                    renderBookmarks(currentCategoryId); // Refresh view
+                }
+            });
 
             li.addEventListener('click', (e) => {
                 // Determine if delete was clicked
@@ -175,6 +196,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             a.className = 'bookmark-card';
             a.href = bm.url;
             a.target = '_blank';
+            a.draggable = true; // Enable drag
+            a.dataset.id = bm.id;
+
+            a.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', bm.id);
+                a.classList.add('dragging');
+            });
+
+            a.addEventListener('dragend', () => {
+                a.classList.remove('dragging');
+            });
 
             a.innerHTML = `
                 <div class="bookmark-visual" style="${bgStyle}">
@@ -216,7 +248,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             };
 
-            // Delete Button
+            // Edit Button
+            const editBtn = document.createElement('button');
+            editBtn.className = 'action-btn edit-btn';
+            editBtn.title = 'Edit';
+            editBtn.innerHTML = `
+                <svg viewBox="0 0 24 24">
+                   <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+            `;
+            editBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openModal('bookmark', bm);
+            };
+
             const delBtn = document.createElement('button');
             delBtn.className = 'action-btn delete-btn';
             delBtn.title = 'Delete';
@@ -234,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             footer.appendChild(copyBtn);
+            footer.appendChild(editBtn);
             footer.appendChild(delBtn);
             a.appendChild(footer);
 
@@ -241,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function openModal(type) {
+    function openModal(type, existingItem = null) {
         modalEl.classList.add('open');
         modalFormEl.innerHTML = '';
 
@@ -261,16 +308,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderCategories();
             };
         } else {
-            modalTitleEl.textContent = 'New Bookmark';
+            const isEdit = !!existingItem;
+            modalTitleEl.textContent = isEdit ? 'Edit Bookmark' : 'New Bookmark';
             // We need to fetch categories to populate the select
             getCategories().then(categories => {
-                let options = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                let options = categories.map(c => `<option value="${c.id}" ${isEdit && existingItem.categoryId === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
                 modalFormEl.innerHTML = `
                     <div class="input-group">
-                        <input type="text" id="bm-title" placeholder="Title" required>
+                        <input type="text" id="bm-title" placeholder="Title" value="${isEdit ? existingItem.title : ''}" required>
                     </div>
                     <div class="input-group">
-                        <input type="url" id="bm-url" placeholder="URL" required>
+                        <input type="url" id="bm-url" placeholder="URL" value="${isEdit ? existingItem.url : ''}" required>
                     </div>
                     <div class="input-group">
                         <select id="bm-cat">
@@ -278,7 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${options}
                         </select>
                     </div>
-                    <button type="submit" class="btn">Save</button>
+                    <button type="submit" class="btn">${isEdit ? 'Save Changes' : 'Save'}</button>
                 `;
                 modalFormEl.onsubmit = async (e) => {
                     e.preventDefault();
@@ -287,7 +335,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const categoryId = document.getElementById('bm-cat').value;
                     if (!categoryId) { alert('Please select a category'); return; }
 
-                    await addBookmark({ title, url, categoryId });
+                    if (isEdit) {
+                        await updateBookmark(existingItem.id, { title, url, categoryId });
+                    } else {
+                        await addBookmark({ title, url, categoryId });
+                    }
+
                     closeModal();
                     renderBookmarks(currentCategoryId);
                 };

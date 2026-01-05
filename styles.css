@@ -341,3 +341,17 @@ body {
     box-shadow: 0 0 0 2px var(--color-primary);
     border-color: transparent;
 }
+
+/* Drag & Drop Animations */
+.bookmark-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+    border: 2px dashed var(--color-primary);
+}
+
+.category-item.drag-over {
+    background-color: var(--color-primary);
+    color: white;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
