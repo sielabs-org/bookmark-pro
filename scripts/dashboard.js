@@ -57,6 +57,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === modalEl) closeModal();
     });
 
+    // Listen for storage changes to refresh UI (e.g. when background syncs deletions)
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace === 'local') {
+            if (changes.categories) {
+                renderCategories();
+            }
+            if (changes.bookmarks) {
+                renderBookmarks(currentCategoryId);
+            }
+        }
+    });
+
     function getBookmarkImage(url) {
         try {
             const urlObj = new URL(url);

@@ -44,3 +44,80 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         }
     }
 });
+
+// Listener for external bookmark changes (e.g. Star Icon in Chrome)
+chrome.bookmarks.onCreated.addListener(async (id, bookmark) => {
+    // Check if we already have it (to avoid loop if we created it via extension)
+    const bookmarks = await getStorage('bookmarks', []);
+    if (bookmarks.find(b => b.chromeId === id)) return;
+
+    // It's a new native bookmark
+    // Assign to "Default" category
+    const categories = await getCategories();
+    let defaultCat = categories.find(c => c.name === 'Default');
+    if (!defaultCat) {
+        defaultCat = await addCategory({ name: 'Default' });
+    }
+
+    const newBm = {
+        id: id,
+        chromeId: id,
+        title: bookmark.title,
+        url: bookmark.url,
+        categoryId: defaultCat.id,
+        createdAt: bookmark.dateAdded
+    };
+
+    // Use setStorage directly to bypass adding to Chrome (infinite loop prevention)
+    setStorage('bookmarks', [...bookmarks, newBm]);
+});
+
+chrome.bookmarks.onRemoved.addListener(async (id, removeInfo) => {
+    const bookmarks = await getStorage('bookmarks', []);
+    const updated = bookmarks.filter(b => b.chromeId !== id);
+    if (updated.length !== bookmarks.length) {
+        setStorage('bookmarks', updated);
+    }
+
+    // Also handle category deletion (if it was a folder we were tracking)
+    // Our categories link via chromeId too.
+    const categories = await getCategories();
+    const updatedCats = categories.filter(c => c.chromeId !== id);
+    if (updatedCats.length !== categories.length) {
+        setStorage('categories', updatedCats);
+    }
+});
+
+chrome.bookmarks.onChanged.addListener(async (id, changeInfo) => {
+    const bookmarks = await getStorage('bookmarks', []);
+    const index = bookmarks.findIndex(b => b.chromeId === id);
+    if (index !== -1) {
+        bookmarks[index] = { ...bookmarks[index], title: changeInfo.title, url: changeInfo.url };
+        setStorage('bookmarks', bookmarks);
+    }
+
+    // Categories (Folders) - only title changes usually
+    const categories = await getCategories();
+    const catIndex = categories.findIndex(c => c.chromeId === id);
+    if (catIndex !== -1) {
+        categories[catIndex].name = changeInfo.title;
+        setStorage('categories', categories);
+    }
+});
+
+chrome.bookmarks.onMoved.addListener(async (id, moveInfo) => {
+    // If moved to a folder we track as a category, update categoryId
+    // This is tricky because we need to know if the new parent is a "Category"
+    const categories = await getCategories();
+    const newParentCategory = categories.find(c => c.chromeId === moveInfo.parentId);
+
+    if (newParentCategory) {
+        const bookmarks = await getStorage('bookmarks', []);
+        const index = bookmarks.findIndex(b => b.chromeId === id);
+        if (index !== -1 && bookmarks[index].categoryId !== newParentCategory.id) {
+            bookmarks[index].categoryId = newParentCategory.id;
+            setStorage('bookmarks', bookmarks);
+        }
+    }
+});
+
