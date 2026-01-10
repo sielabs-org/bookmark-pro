@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Bookmark Pro",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Manage bookmarks with custom categories and a premium dashboard.",
     "permissions": [
         "bookmarks",
