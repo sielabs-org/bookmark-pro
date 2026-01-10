@@ -13,10 +13,12 @@ export const getCategories = () => {
             function traverse(node) {
                 // If it is a folder (check if it has 'children' and 'id' is NOT '0' (Root))
                 if (node.children && node.id !== '0') {
+                    const isSystem = ['1', '2', '3'].includes(node.id);
                     categories.push({
                         id: node.id,
                         name: node.title || (node.id === '1' ? 'Bookmarks Bar' : (node.id === '2' ? 'Other Bookmarks' : 'Folder')),
-                        chromeId: node.id
+                        chromeId: node.id,
+                        deletable: !isSystem
                     });
                     node.children.forEach(traverse);
                 } else if (node.children && node.id === '0') {

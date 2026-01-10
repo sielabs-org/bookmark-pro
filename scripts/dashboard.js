@@ -132,7 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const li = document.createElement('li');
             li.className = `category-item ${currentCategoryId === cat.id ? 'active' : ''}`;
             li.dataset.id = cat.id;
-            li.innerHTML = `<span>${cat.name}</span> <span class="delete-cat" style="margin-left:auto; font-size:12px; color:red; display:none;">x</span>`;
+            const deleteBtn = cat.deletable ? '<span class="delete-cat" style="margin-left:auto; font-size:12px; color:red; display:none;">x</span>' : '';
+            li.innerHTML = `<span>${cat.name}</span> ${deleteBtn}`;
 
             // Drop Zone Logic
             li.addEventListener('dragover', (e) => {
@@ -148,18 +149,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const bookmarkId = e.dataTransfer.getData('text/plain');
                 if (bookmarkId) {
                     await moveBookmark(bookmarkId, cat.id);
-                    renderBookmarks(currentCategoryId); // Refresh view
+                    renderCategories(); // We might not need this if move triggers event
+                    // But events are async, so maybe safer
+                    // renderBookmarks handled by event listener? Yes.
                 }
             });
 
             li.addEventListener('click', (e) => {
                 // Determine if delete was clicked
                 if (e.target.classList.contains('delete-cat')) {
-                    deleteCategory(cat.id).then(() => {
-                        if (currentCategoryId === cat.id) currentCategoryId = 'all';
-                        renderCategories();
-                        renderBookmarks(currentCategoryId);
-                    });
+                    if (confirm(`Are you sure you want to delete folder "${cat.name}" and all its contents?`)) {
+                        deleteCategory(cat.id).then(() => {
+                            if (currentCategoryId === cat.id) currentCategoryId = 'all';
+                            // render handled by event listeners? 
+                            // Yes, chrome.bookmarks.onRemoved will fire.
+                        }).catch(err => {
+                            console.error('Delete failed:', err);
+                            alert('Failed to delete category. System folders cannot be deleted.');
+                        });
+                    }
                     return;
                 }
 
@@ -171,8 +179,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // Show delete on hover
-            li.addEventListener('mouseenter', () => li.querySelector('.delete-cat').style.display = 'block');
-            li.addEventListener('mouseleave', () => li.querySelector('.delete-cat').style.display = 'none');
+            li.addEventListener('mouseenter', () => {
+                const btn = li.querySelector('.delete-cat');
+                if (btn) btn.style.display = 'block';
+            });
+            li.addEventListener('mouseleave', () => {
+                const btn = li.querySelector('.delete-cat');
+                if (btn) btn.style.display = 'none';
+            });
 
             categoryListEl.appendChild(li);
         });
