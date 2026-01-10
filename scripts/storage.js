@@ -1,138 +1,150 @@
-// Helper to get item from local storage
-export const getStorage = (key, defaultVal) => {
+
+// Wrapper for Chrome Bookmarks API
+
+export const getCategories = () => {
     return new Promise((resolve) => {
-        chrome.storage.local.get([key], (result) => {
-            resolve(result[key] || defaultVal);
+        chrome.bookmarks.getTree((results) => {
+            const categories = [];
+
+            // Allow root level folders (Bookmarks Bar, Other Bookmarks) to count as categories
+            // if they have children.
+            // Also traverse standard folders.
+
+            function traverse(node) {
+                // If it is a folder (check if it has 'children' and 'id' is NOT '0' (Root))
+                if (node.children && node.id !== '0') {
+                    categories.push({
+                        id: node.id,
+                        name: node.title || (node.id === '1' ? 'Bookmarks Bar' : (node.id === '2' ? 'Other Bookmarks' : 'Folder')),
+                        chromeId: node.id
+                    });
+                    node.children.forEach(traverse);
+                } else if (node.children && node.id === '0') {
+                    // It's root, just traverse children
+                    node.children.forEach(traverse);
+                }
+            }
+
+            results.forEach(traverse);
+            resolve(categories);
         });
     });
 };
 
-export const setStorage = (key, value) => {
-    return new Promise((resolve) => {
-        chrome.storage.local.set({ [key]: value }, resolve);
-    });
-};
-
-export const getCategories = async () => {
-    return await getStorage('categories', []);
-};
-
-export const addCategory = async (category) => {
-    // 1. Create in Chrome Bookmarks
-    const chromeNode = await chrome.bookmarks.create({
-        title: category.name
-    });
-
-    // 2. Save to Local Storage with chromeId
-    const categories = await getCategories();
-    // Use chromeNode.id as the internal id to keep them linked easily
-    const newCat = {
-        ...category,
-        id: chromeNode.id,
-        chromeId: chromeNode.id
-    };
-    await setStorage('categories', [...categories, newCat]);
-    return newCat;
-};
-
-export const deleteCategory = async (id) => {
-    // 1. Remove from Chrome Bookmarks
-    try {
-        await chrome.bookmarks.removeTree(id);
-    } catch (e) {
-        console.warn('Failed to remove from chrome bookmarks', e);
-    }
-
-    // 2. Remove from Local Storage
-    const categories = await getCategories();
-    await setStorage('categories', categories.filter(c => c.id !== id));
-};
-
-export const getBookmarks = async () => {
-    return await getStorage('bookmarks', []);
-};
-
-export const addBookmark = async (bookmark) => {
-    // 1. Create in Chrome Bookmarks
-    // Note: bookmark.categoryId matches the Chrome Folder ID (see addCategory)
-    // If categoryId is 'all' or undefined, we might need a default parent.
-    // However, our UI enforces a category selection.
-
-    // Fallback if trying to save to "all" (shouldn't happen with current UI but safety first)
-    const parentId = (bookmark.categoryId && bookmark.categoryId !== 'all') ? bookmark.categoryId : '1'; // '1' is usually Bookmarks Bar
-
-    const chromeNode = await chrome.bookmarks.create({
-        parentId: parentId,
-        title: bookmark.title,
-        url: bookmark.url
-    });
-
-    // 2. Save to Local Storage
-    const bookmarks = await getBookmarks();
-    const newBm = {
-        ...bookmark,
-        id: chromeNode.id,
-        chromeId: chromeNode.id
-    };
-    await setStorage('bookmarks', [...bookmarks, newBm]);
-    return newBm;
-};
-
-export const deleteBookmark = async (id) => {
-    // 1. Remove from Chrome Bookmarks
-    try {
-        await chrome.bookmarks.remove(id);
-    } catch (e) {
-        console.warn('Failed to remove chrome bookmark', e);
-    }
-
-    // 2. Remove from Local Storage
-    const bookmarks = await getBookmarks();
-    await setStorage('bookmarks', bookmarks.filter(b => b.id !== id));
-};
-
-export const moveBookmark = async (id, newCategoryId) => {
-    // 1. Move in Chrome Bookmarks
-    // newCategoryId is the Chrome Folder ID
-    try {
-        await chrome.bookmarks.move(id, { parentId: newCategoryId });
-    } catch (e) {
-        console.warn('Failed to move chrome bookmark', e);
-        return;
-    }
-
-    // 2. Update Local Storage
-    const bookmarks = await getBookmarks();
-    const updatedBookmarks = bookmarks.map(b => {
-        if (b.id === id) {
-            return { ...b, categoryId: newCategoryId };
-        }
-        return b;
-    });
-    await setStorage('bookmarks', updatedBookmarks);
-};
-
-export const updateBookmark = async (id, changes) => {
-    // 1. Update in Chrome Bookmarks
-    try {
-        await chrome.bookmarks.update(id, {
-            title: changes.title,
-            url: changes.url
+export const addCategory = (category) => {
+    return new Promise((resolve, reject) => {
+        // Create folder in "Other Bookmarks" (id '2') by default if no parent specified,
+        // or let Chrome decide (usually appends to ends of main list if parentId not given, but explicit is better)
+        // Actually, if we just create without parentId, it goes to "Other Bookmarks" usually.
+        chrome.bookmarks.create({
+            parentId: '2', // Default to 'Other Bookmarks' to keep 'Bookmarks Bar' clean? Or '1'? Let's use '2' "Other"
+            title: category.name
+        }, (node) => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve({
+                id: node.id,
+                name: node.title,
+                chromeId: node.id
+            });
         });
-        if (changes.categoryId) {
-            await chrome.bookmarks.move(id, { parentId: changes.categoryId });
-        }
-    } catch (e) {
-        console.warn('Failed to update chrome bookmark', e);
-    }
-
-    // 2. Update Local Storage
-    const bookmarks = await getBookmarks();
-    const updatedBookmarks = bookmarks.map(b => {
-        if (b.id === id) {
-            return { ...b, ...changes };
-        }
-        return b;
     });
-    await setStorage('bookmarks', updatedBookmarks);
+};
+
+export const deleteCategory = (id) => {
+    return new Promise((resolve, reject) => {
+        chrome.bookmarks.removeTree(id, () => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve();
+        });
+    });
+};
+
+export const getBookmarks = () => {
+    return new Promise((resolve) => {
+        chrome.bookmarks.getTree((results) => {
+            const bookmarks = [];
+
+            function traverse(node, parentId = null) {
+                if (node.url) {
+                    bookmarks.push({
+                        id: node.id,
+                        title: node.title,
+                        url: node.url,
+                        categoryId: parentId,
+                        chromeId: node.id,
+                        createdAt: node.dateAdded
+                    });
+                }
+                if (node.children) {
+                    node.children.forEach(child => traverse(child, node.id));
+                }
+            }
+            results.forEach(node => traverse(node)); // Root doesn't have parentId relevant for us
+            resolve(bookmarks);
+        });
+    });
+};
+
+export const addBookmark = (bookmark) => {
+    return new Promise((resolve, reject) => {
+        chrome.bookmarks.create({
+            parentId: bookmark.categoryId,
+            title: bookmark.title,
+            url: bookmark.url
+        }, (node) => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve({
+                id: node.id,
+                title: node.title,
+                url: node.url,
+                categoryId: node.parentId,
+                chromeId: node.id
+            });
+        });
+    });
+};
+
+export const deleteBookmark = (id) => {
+    return new Promise((resolve, reject) => {
+        chrome.bookmarks.remove(id, () => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve();
+        });
+    });
+};
+
+export const moveBookmark = (id, newCategoryId) => {
+    return new Promise((resolve, reject) => {
+        chrome.bookmarks.move(id, { parentId: newCategoryId }, (node) => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve(node);
+        });
+    });
+};
+
+export const updateBookmark = (id, changes) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            if (changes.title || changes.url) {
+                await new Promise((res, rej) => {
+                    chrome.bookmarks.update(id, { title: changes.title, url: changes.url }, () => {
+                        if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
+                        else res();
+                    });
+                });
+            }
+
+            if (changes.categoryId) {
+                await new Promise((res, rej) => {
+                    chrome.bookmarks.move(id, { parentId: changes.categoryId }, () => {
+                        if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
+                        else res();
+                    });
+                });
+            }
+            resolve();
+        } catch (e) {
+            reject(e);
+        }
+    });
 };

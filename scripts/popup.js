@@ -27,12 +27,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let categories = await getCategories();
 
-        // Ensure "Default" category exists
-        let defaultCategory = categories.find(c => c.name === 'Default');
-        if (!defaultCategory) {
-            defaultCategory = await addCategory({ name: 'Default' });
-            categories = await getCategories();
-        }
+        // Ensure "Default" category exists - REMOVED
+        // let defaultCategory = categories.find(c => c.name === 'Default');
+        // if (!defaultCategory) {
+        //     defaultCategory = await addCategory({ name: 'Default' });
+        //     categories = await getCategories();
+        // }
 
         categories.forEach(cat => {
             const option = document.createElement('option');
@@ -41,9 +41,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             catSelect.appendChild(option);
         });
 
-        // Select "Default" category
-        if (defaultCategory) {
-            catSelect.value = defaultCategory.id;
+        // Select first category if available
+        if (categories.length > 0) {
+            catSelect.value = categories[0].id;
         }
     }
     await loadCategories();

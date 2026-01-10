@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial Load
     await renderCategories();
-    await renderBookmarks('all');
+    renderBookmarks('all'); // Not awaiting to unblock UI render faster? No, let's keep it simple.
+
 
     const searchInput = document.getElementById('search-input');
     const themeToggleBtn = document.getElementById('theme-toggle');
@@ -58,16 +59,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Listen for storage changes to refresh UI (e.g. when background syncs deletions)
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'local') {
-            if (changes.categories) {
-                renderCategories();
-            }
-            if (changes.bookmarks) {
-                renderBookmarks(currentCategoryId);
-            }
-        }
-    });
+    // Listen for bookmark changes to refresh UI interactively
+    const refreshUI = () => {
+        renderCategories().then(() => {
+            renderBookmarks(currentCategoryId);
+        });
+    };
+
+    chrome.bookmarks.onCreated.addListener(refreshUI);
+    chrome.bookmarks.onRemoved.addListener(refreshUI);
+    chrome.bookmarks.onChanged.addListener(refreshUI);
+    chrome.bookmarks.onMoved.addListener(refreshUI);
+    chrome.bookmarks.onChildrenReordered.addListener(refreshUI);
+
 
     function getBookmarkImage(url) {
         try {
@@ -90,6 +94,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `https://www.google.com/s2/favicons?sz=64&domain_url=${url}`;
         } catch (e) {
             return 'https://via.placeholder.com/150';
+        }
+    }
+
+    function getHostname(url) {
+        try {
+            return new URL(url).hostname;
+        } catch (e) {
+            return url;
         }
     }
 
@@ -227,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="bookmark-info">
                     <div class="bookmark-title">${bm.title}</div>
                     <div class="bookmark-meta">
-                        <span class="bookmark-hostname">${new URL(bm.url).hostname}</span>
+                        <span class="bookmark-hostname">${getHostname(bm.url)}</span>
                     </div>
                 </div>
             `;
