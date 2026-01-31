@@ -85,4 +85,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     openDashboardLink.addEventListener('click', () => {
         chrome.tabs.create({ url: 'index.html' });
     });
+
+    // Shortcut Hint
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const shortcutText = isMac ? '(Option+O)' : '(Alt+O)';
+    document.getElementById('dashboard-shortcut').textContent = shortcutText;
 });

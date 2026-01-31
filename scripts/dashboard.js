@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentCategoryId = 'all';
     let currentSearchQuery = '';
 
+    // Shortcut Hint
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const shortcutText = isMac ? 'Option+O' : 'Alt+O';
+    const shortcutEl = document.getElementById('sidebar-shortcut');
+    if (shortcutEl) shortcutEl.textContent = shortcutText;
+
     // Initial Load
     await renderCategories();
     renderBookmarks('all'); // Not awaiting to unblock UI render faster? No, let's keep it simple.
