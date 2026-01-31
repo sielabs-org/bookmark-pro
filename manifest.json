@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Bookmark Pro",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Manage bookmarks with custom categories and a premium dashboard.",
     "permissions": [
         "bookmarks",
@@ -27,6 +27,13 @@
                 "mac": "Command+Shift+E"
             },
             "description": "Open Bookmark Popup"
+        },
+        "open_dashboard": {
+            "suggested_key": {
+                "default": "Alt+O",
+                "mac": "Alt+O"
+            },
+            "description": "Open Dashboard"
         }
     }
 }

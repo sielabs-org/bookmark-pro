@@ -4,6 +4,12 @@ chrome.action.onClicked.addListener((tab) => {
     chrome.tabs.create({ url: 'index.html' });
 });
 
+chrome.commands.onCommand.addListener((command) => {
+    if (command === 'open_dashboard') {
+        chrome.tabs.create({ url: 'index.html' });
+    }
+});
+
 chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {
         // No auto-creation of folders or default categories anymore.
