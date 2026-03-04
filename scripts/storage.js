@@ -18,7 +18,9 @@ export const getCategories = () => {
                         id: node.id,
                         name: node.title || (node.id === '1' ? 'Bookmarks Bar' : (node.id === '2' ? 'Other Bookmarks' : 'Folder')),
                         chromeId: node.id,
-                        deletable: !isSystem
+                        deletable: !isSystem,
+                        parentId: node.parentId,
+                        index: node.index
                     });
                     node.children.forEach(traverse);
                 } else if (node.children && node.id === '0') {
@@ -29,6 +31,19 @@ export const getCategories = () => {
 
             results.forEach(traverse);
             resolve(categories);
+        });
+    });
+};
+
+export const moveCategory = (id, newParentId, newIndex) => {
+    return new Promise((resolve, reject) => {
+        let destination = { parentId: newParentId };
+        if (newIndex !== undefined && newIndex !== null) {
+            destination.index = newIndex;
+        }
+        chrome.bookmarks.move(id, destination, (node) => {
+            if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+            resolve(node);
         });
     });
 };

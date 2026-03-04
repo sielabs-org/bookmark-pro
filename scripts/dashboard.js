@@ -1,6 +1,11 @@
-import { getCategories, addCategory, getBookmarks, addBookmark, deleteBookmark, deleteCategory, moveBookmark, updateBookmark } from './storage.js';
+import { getCategories, addCategory, getBookmarks, addBookmark, deleteBookmark, deleteCategory, moveBookmark, updateBookmark, moveCategory } from './storage.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection:', event.reason);
+        event.preventDefault();
+    });
+
     const categoryListEl = document.getElementById('category-list');
     const bookmarkGridEl = document.getElementById('bookmark-grid');
     const pageTitleEl = document.getElementById('page-title');
@@ -18,9 +23,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const shortcutEl = document.getElementById('sidebar-shortcut');
     if (shortcutEl) shortcutEl.textContent = shortcutText;
 
+    const renderView = () => {
+        return renderCategories()
+            .then(() => renderBookmarks(currentCategoryId))
+            .catch((error) => {
+                showMoveError('Failed to render categories', error);
+            });
+    };
+
     // Initial Load
-    await renderCategories();
-    renderBookmarks('all'); // Not awaiting to unblock UI render faster? No, let's keep it simple.
+    await renderView();
 
 
     const searchInput = document.getElementById('search-input');
@@ -66,10 +78,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Listen for storage changes to refresh UI (e.g. when background syncs deletions)
     // Listen for bookmark changes to refresh UI interactively
+    let refreshTimeout;
     const refreshUI = () => {
-        renderCategories().then(() => {
-            renderBookmarks(currentCategoryId);
-        });
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+            renderView();
+        }, 50); // Debounce to prevent multiple renders on bulk operations
     };
 
     chrome.bookmarks.onCreated.addListener(refreshUI);
@@ -111,15 +125,92 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function getErrorMessage(error) {
+        if (!error) return 'Unknown error';
+        if (typeof error === 'string') return error;
+        if (error.message) return error.message;
+        try {
+            return JSON.stringify(error);
+        } catch (e) {
+            return String(error);
+        }
+    }
+
+    function showUserMessage(message) {
+        try {
+            if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                window.alert(message);
+                return;
+            }
+        } catch (dialogError) {
+            console.warn('Unable to show alert dialog:', dialogError);
+        }
+        console.warn(message);
+    }
+
+    function showMoveError(prefix, error) {
+        let details = 'Unknown error';
+        try {
+            details = getErrorMessage(error);
+        } catch (parseError) {
+            console.error('Failed to parse move error:', parseError);
+        }
+        console.error(prefix, error);
+        showUserMessage(`${prefix}: ${details}`);
+    }
+
+    function closestFromTarget(target, selector) {
+        return target instanceof Element ? target.closest(selector) : null;
+    }
+
     async function renderCategories() {
-        const categories = await getCategories();
-        categoryListEl.innerHTML = '';
+        try {
+            const categories = await getCategories();
+            categoryListEl.innerHTML = '';
+        const parentByCategoryId = categories.reduce((acc, item) => {
+            acc[item.id] = item.parentId;
+            return acc;
+        }, {});
+        const movableCategoriesByParent = categories.reduce((acc, item) => {
+            if (!item.deletable) return acc;
+            if (!acc[item.parentId]) acc[item.parentId] = [];
+            acc[item.parentId].push(item);
+            return acc;
+        }, {});
+        Object.values(movableCategoriesByParent).forEach((items) => {
+            items.sort((a, b) => a.index - b.index);
+        });
+
+        const moveCategoryByStep = async (cat, direction) => {
+            const siblings = movableCategoriesByParent[cat.parentId] || [];
+            const currentPosition = siblings.findIndex((sibling) => sibling.id === cat.id);
+            if (currentPosition < 0) return;
+            const targetPosition = direction === 'up' ? currentPosition - 1 : currentPosition + 1;
+            const targetSibling = siblings[targetPosition];
+            if (!targetSibling) return;
+
+            let targetIndex = direction === 'up' ? targetSibling.index : targetSibling.index + 1;
+            if (cat.index < targetIndex) {
+                targetIndex--;
+            }
+
+            await moveCategory(cat.id, cat.parentId, targetIndex);
+        };
+
+        const createsCycle = (dragCategoryId, newParentId) => {
+            let currentParent = newParentId;
+            while (currentParent && currentParent !== '0') {
+                if (currentParent === dragCategoryId) return true;
+                currentParent = parentByCategoryId[currentParent];
+            }
+            return false;
+        };
 
         // "All Bookmarks" Item
         const allLi = document.createElement('li');
         allLi.className = `category-item ${currentCategoryId === 'all' ? 'active' : ''}`;
         allLi.dataset.id = 'all';
-        allLi.textContent = 'All Bookmarks';
+        allLi.innerHTML = '<span class="category-name">All Bookmarks</span>';
 
         allLi.addEventListener('click', () => {
             currentCategoryId = 'all';
@@ -134,36 +225,184 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         categoryListEl.appendChild(allLi);
 
-        categories.forEach(cat => {
+            categories.forEach(cat => {
             const li = document.createElement('li');
             li.className = `category-item ${currentCategoryId === cat.id ? 'active' : ''}`;
             li.dataset.id = cat.id;
-            const deleteBtn = cat.deletable ? '<span class="delete-cat" style="margin-left:auto; font-size:12px; color:red; display:none;">x</span>' : '';
-            li.innerHTML = `<span>${cat.name}</span> ${deleteBtn}`;
+
+            if (cat.deletable) {
+                li.draggable = true;
+            }
+
+            const siblings = movableCategoriesByParent[cat.parentId] || [];
+            const currentPosition = siblings.findIndex((sibling) => sibling.id === cat.id);
+            const canMoveUp = currentPosition > 0;
+            const canMoveDown = currentPosition >= 0 && currentPosition < siblings.length - 1;
+
+            if (cat.deletable) {
+                const handleEl = document.createElement('span');
+                handleEl.className = 'category-handle';
+                handleEl.setAttribute('aria-hidden', 'true');
+                handleEl.textContent = '::';
+                li.appendChild(handleEl);
+            }
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'category-name';
+            nameEl.textContent = cat.name;
+            li.appendChild(nameEl);
+
+            let moveUpBtn = null;
+            let moveDownBtn = null;
+
+            if (cat.deletable) {
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'category-actions';
+
+                moveUpBtn = document.createElement('button');
+                moveUpBtn.type = 'button';
+                moveUpBtn.className = 'category-move-btn move-up';
+                moveUpBtn.title = 'Move Up';
+                moveUpBtn.setAttribute('aria-label', 'Move category up');
+                moveUpBtn.textContent = '▲';
+                moveUpBtn.disabled = !canMoveUp;
+
+                moveDownBtn = document.createElement('button');
+                moveDownBtn.type = 'button';
+                moveDownBtn.className = 'category-move-btn move-down';
+                moveDownBtn.title = 'Move Down';
+                moveDownBtn.setAttribute('aria-label', 'Move category down');
+                moveDownBtn.textContent = '▼';
+                moveDownBtn.disabled = !canMoveDown;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'delete-cat';
+                deleteBtn.title = 'Delete Category';
+                deleteBtn.setAttribute('aria-label', 'Delete category');
+                deleteBtn.textContent = 'x';
+
+                actionsEl.appendChild(moveUpBtn);
+                actionsEl.appendChild(moveDownBtn);
+                actionsEl.appendChild(deleteBtn);
+                li.appendChild(actionsEl);
+            }
+
+            if (moveUpBtn) {
+                moveUpBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveCategoryByStep(cat, 'up').catch((error) => {
+                        showMoveError('Could not move category up', error);
+                    });
+                });
+            }
+            if (moveDownBtn) {
+                moveDownBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveCategoryByStep(cat, 'down').catch((error) => {
+                        showMoveError('Could not move category down', error);
+                    });
+                });
+            }
+
+            // Drag Start
+            li.addEventListener('dragstart', (e) => {
+                if (!cat.deletable) {
+                    e.preventDefault();
+                    return;
+                }
+                if (closestFromTarget(e.target, '.category-actions')) {
+                    e.preventDefault();
+                    return;
+                }
+                e.dataTransfer.setData('category-id', cat.id);
+                e.dataTransfer.setData('source-index', cat.index);
+                e.dataTransfer.setData('source-parent', cat.parentId);
+                e.dataTransfer.effectAllowed = 'move';
+                li.classList.add('dragging-cat');
+                e.stopPropagation();
+            });
+
+            li.addEventListener('dragend', () => {
+                li.classList.remove('dragging-cat');
+                document.querySelectorAll('.category-item').forEach(el => {
+                    el.classList.remove('drop-before', 'drop-after', 'drag-over');
+                });
+            });
 
             // Drop Zone Logic
             li.addEventListener('dragover', (e) => {
                 e.preventDefault(); // Necessary for drop to work
-                li.classList.add('drag-over');
+
+                const dragType = e.dataTransfer.types.includes('category-id') ? 'category' : 'bookmark';
+
+                if (dragType === 'category') {
+                    // For category reordering, show before/after indicator
+                    const bounding = li.getBoundingClientRect();
+                    const offset = bounding.y + (bounding.height / 2);
+
+                    if (e.clientY - offset > 0) {
+                        li.classList.add('drop-after');
+                        li.classList.remove('drop-before');
+                    } else {
+                        li.classList.add('drop-before');
+                        li.classList.remove('drop-after');
+                    }
+                } else {
+                    // For bookmark dropping, show full highlight
+                    li.classList.add('drag-over');
+                }
             });
             li.addEventListener('dragleave', () => {
-                li.classList.remove('drag-over');
+                li.classList.remove('drag-over', 'drop-before', 'drop-after');
             });
-            li.addEventListener('drop', async (e) => {
+            li.addEventListener('drop', (e) => {
                 e.preventDefault();
-                li.classList.remove('drag-over');
-                const bookmarkId = e.dataTransfer.getData('text/plain');
-                if (bookmarkId) {
-                    await moveBookmark(bookmarkId, cat.id);
-                    renderCategories(); // We might not need this if move triggers event
-                    // But events are async, so maybe safer
-                    // renderBookmarks handled by event listener? Yes.
-                }
+                li.classList.remove('drag-over', 'drop-before', 'drop-after');
+
+                Promise.resolve().then(async () => {
+                    const bookmarkId = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+                    const dragCatId = e.dataTransfer ? e.dataTransfer.getData('category-id') : '';
+                    if (dragCatId) {
+                        // Category reordering logic
+                        if (dragCatId === cat.id) return; // Dropped on itself
+                        if (createsCycle(dragCatId, cat.parentId)) {
+                            showUserMessage('Cannot move a category into itself or its nested subcategory.');
+                            return;
+                        }
+
+                        const sourceParent = e.dataTransfer.getData('source-parent');
+                        let targetIndex = cat.index;
+
+                        const bounding = li.getBoundingClientRect();
+                        const offset = bounding.y + (bounding.height / 2);
+                        if (e.clientY - offset > 0) {
+                            // Drop After
+                            targetIndex++;
+                        }
+
+                        const sourceIndex = parseInt(e.dataTransfer.getData('source-index'), 10);
+                        // Adjust index if moving within the same folder and moving downward
+                        if (sourceParent === cat.parentId && sourceIndex < targetIndex) {
+                            targetIndex--;
+                        }
+
+                        await moveCategory(dragCatId, cat.parentId, targetIndex);
+                        // Notice: UI will refresh via chrome.bookmarks.onMoved
+                    } else if (bookmarkId) {
+                        // Bookmark moving logic
+                        await moveBookmark(bookmarkId, cat.id);
+                    }
+                }).catch((error) => {
+                    showMoveError('Could not move item', error);
+                });
             });
 
             li.addEventListener('click', (e) => {
                 // Determine if delete was clicked
-                if (e.target.classList.contains('delete-cat')) {
+                if (closestFromTarget(e.target, '.delete-cat')) {
                     if (confirm(`Are you sure you want to delete folder "${cat.name}" and all its contents?`)) {
                         deleteCategory(cat.id).then(() => {
                             if (currentCategoryId === cat.id) currentCategoryId = 'all';
@@ -171,11 +410,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             // Yes, chrome.bookmarks.onRemoved will fire.
                         }).catch(err => {
                             console.error('Delete failed:', err);
-                            alert('Failed to delete category. System folders cannot be deleted.');
+                            showUserMessage('Failed to delete category. System folders cannot be deleted.');
                         });
                     }
                     return;
                 }
+                if (closestFromTarget(e.target, '.category-move-btn')) return;
 
                 currentCategoryId = cat.id;
                 document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
@@ -184,18 +424,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderBookmarks(cat.id);
             });
 
-            // Show delete on hover
-            li.addEventListener('mouseenter', () => {
-                const btn = li.querySelector('.delete-cat');
-                if (btn) btn.style.display = 'block';
+                categoryListEl.appendChild(li);
             });
-            li.addEventListener('mouseleave', () => {
-                const btn = li.querySelector('.delete-cat');
-                if (btn) btn.style.display = 'none';
-            });
-
-            categoryListEl.appendChild(li);
-        });
+        } catch (error) {
+            console.error('renderCategories failed:', error);
+            showUserMessage(`Failed to render categories: ${getErrorMessage(error)}`);
+        }
     }
 
     function getGradient(str) {
@@ -218,20 +452,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderBookmarks(categoryId) {
-        let bookmarks = await getBookmarks();
-        if (categoryId !== 'all') {
-            bookmarks = bookmarks.filter(b => b.categoryId === categoryId);
-        }
+        try {
+            let bookmarks = await getBookmarks();
+            if (categoryId !== 'all') {
+                bookmarks = bookmarks.filter(b => b.categoryId === categoryId);
+            }
 
-        if (currentSearchQuery) {
-            bookmarks = bookmarks.filter(b =>
-                b.title.toLowerCase().includes(currentSearchQuery) ||
-                b.url.toLowerCase().includes(currentSearchQuery)
-            );
-        }
+            if (currentSearchQuery) {
+                bookmarks = bookmarks.filter(b =>
+                    b.title.toLowerCase().includes(currentSearchQuery) ||
+                    b.url.toLowerCase().includes(currentSearchQuery)
+                );
+            }
 
-        bookmarkGridEl.innerHTML = '';
-        bookmarks.forEach(bm => {
+            bookmarkGridEl.innerHTML = '';
+            bookmarks.forEach(bm => {
             const imgUrl = getBookmarkImage(bm.url);
             const isFavicon = imgUrl.includes('google.com/s2/favicons');
             const bgStyle = isFavicon ? `background: ${getGradient(bm.title)};` : 'background: #F4F5F7;';
@@ -328,8 +563,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             footer.appendChild(delBtn);
             a.appendChild(footer);
 
-            bookmarkGridEl.appendChild(a);
-        });
+                bookmarkGridEl.appendChild(a);
+            });
+        } catch (error) {
+            console.error('renderBookmarks failed:', error);
+            showUserMessage(`Failed to render bookmarks: ${getErrorMessage(error)}`);
+        }
     }
 
     function openModal(type, existingItem = null) {
@@ -377,7 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const title = document.getElementById('bm-title').value;
                     const url = document.getElementById('bm-url').value;
                     const categoryId = document.getElementById('bm-cat').value;
-                    if (!categoryId) { alert('Please select a category'); return; }
+                    if (!categoryId) { showUserMessage('Please select a category'); return; }
 
                     if (isEdit) {
                         await updateBookmark(existingItem.id, { title, url, categoryId });
